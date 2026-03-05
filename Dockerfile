@@ -11,9 +11,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl make ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Node.js for Tailwind/Vite CSS build
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
+# Node.js + npm for Tailwind/Vite CSS build.
+# Install both explicitly from Debian repos so npm is always present.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . .
