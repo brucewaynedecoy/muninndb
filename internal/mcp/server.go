@@ -109,6 +109,10 @@ func (s *MCPServer) Serve() error {
 	return s.srv.Serve(ln)
 }
 
+// Handler returns the underlying HTTP handler so MCP endpoints can be mounted
+// on another listener (for single-port deployments).
+func (s *MCPServer) Handler() http.Handler { return s.srv.Handler }
+
 // Shutdown gracefully stops the server.
 func (s *MCPServer) Shutdown(ctx context.Context) error { return s.srv.Shutdown(ctx) }
 

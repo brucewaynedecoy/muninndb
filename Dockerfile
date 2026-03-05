@@ -41,9 +41,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /muninndb-server /usr/local/bin/muninndb-server
 
-# Persistent data volume — Pebble DB, WAL, and auth secrets live here.
-VOLUME ["/data"]
-
 # MBP protocol  8474
 # REST API       8475
 # Web UI         8476

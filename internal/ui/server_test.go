@@ -239,6 +239,31 @@ func TestStaticHandler(t *testing.T) {
 	}
 }
 
+func TestMCPHandlerMountedOnUIServer(t *testing.T) {
+	webFS := makeMockFS()
+	eng := &mockEngine{}
+	mcpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/mcp/health" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
+			return
+		}
+		http.NotFound(w, r)
+	})
+
+	srv, err := ui.NewServer(webFS, eng, http.NotFoundHandler(), nil, nil, logging.NewRingBuffer(10, nil), nil, nil, mcpHandler)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/mcp/health", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 for MCP health, got %d", w.Code)
+	}
+}
+
 func TestSPAHandlerNonRoot(t *testing.T) {
 	// All non-static paths should serve index.html (SPA catch-all)
 	webFS := makeMockFS()

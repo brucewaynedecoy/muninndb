@@ -72,12 +72,14 @@ func (h *sseHub) broadcast(data []byte) {
 	}
 }
 
-// NewServer creates a new UI server using the provided embedded FS, engine, and API handler.
-// apiHandler is mounted at /api/ so the SPA can make same-origin API calls.
+// NewServer creates a new UI server using the provided embedded FS, engine,
+// and API handler. apiHandler is mounted at /api/ so the SPA can make
+// same-origin API calls.
 // authStore and sessionSecret are used to handle admin login/logout via cookie sessions.
 // tlsConfig, if non-nil, enables TLS on the listener.
 // corsOrigins is the list of allowed CORS origins for the SSE endpoint.
-func NewServer(webFS fs.FS, engine rest.EngineAPI, apiHandler http.Handler, authStore *auth.Store, sessionSecret []byte, ring *logging.RingBuffer, tlsConfig *tls.Config, corsOrigins []string) (*Server, error) {
+// Optionally pass mcpHandler to mount MCP routes on the same listener.
+func NewServer(webFS fs.FS, engine rest.EngineAPI, apiHandler http.Handler, authStore *auth.Store, sessionSecret []byte, ring *logging.RingBuffer, tlsConfig *tls.Config, corsOrigins []string, mcpHandler ...http.Handler) (*Server, error) {
 	staticFS, err := fs.Sub(webFS, "static")
 	if err != nil {
 		return nil, err
@@ -102,6 +104,11 @@ func NewServer(webFS fs.FS, engine rest.EngineAPI, apiHandler http.Handler, auth
 
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
+	if len(mcpHandler) > 0 && mcpHandler[0] != nil {
+		// Mount MCP on the UI listener for single-port PaaS deployments.
+		mux.Handle("/mcp", mcpHandler[0])
+		mux.Handle("/mcp/", mcpHandler[0])
+	}
 	// Login/logout are handled by the UI server itself (cookie sessions).
 	// These must be registered before the /api/ catch-all so they take precedence.
 	mux.HandleFunc("POST /api/auth/login", s.handleAdminLogin)

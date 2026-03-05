@@ -457,6 +457,23 @@ func parseListenHost(args []string, envVal string) string {
 	return host
 }
 
+func resolveUIAddrDefault(listenHost, uiAddrEnv, portEnv string) string {
+	if uiAddrEnv != "" {
+		return uiAddrEnv
+	}
+	if portEnv != "" {
+		return "0.0.0.0:" + portEnv
+	}
+	return listenHost + ":8476"
+}
+
+func resolveMCPToken(flagToken, envToken string) string {
+	if flagToken != "" {
+		return flagToken
+	}
+	return envToken
+}
+
 func runServer() {
 	// Apply memory limits before any significant allocations.
 	applyMemoryLimits()
@@ -473,10 +490,7 @@ func runServer() {
 	mcpAddr := flag.String("mcp-addr", listenHost+":"+defaultMCPPort, "MCP JSON-RPC listen address")
 	grpcAddr := flag.String("grpc-addr", listenHost+":8477", "gRPC listen address")
 	metricsAddr := flag.String("metrics-addr", "", "Prometheus /metrics listen address (empty = disabled)")
-	uiAddrDefault := listenHost + ":8476"
-	if v := os.Getenv("MUNINN_UI_ADDR"); v != "" {
-		uiAddrDefault = v
-	}
+	uiAddrDefault := resolveUIAddrDefault(listenHost, os.Getenv("MUNINN_UI_ADDR"), os.Getenv("PORT"))
 	uiAddr := flag.String("ui-addr", uiAddrDefault, "Web UI HTTP listen address")
 	mcpToken := flag.String("mcp-token", "", "Bearer token for MCP auth (empty = no auth)")
 	dev := flag.Bool("dev", false, "serve web assets from ./web directory (development mode)")
@@ -503,7 +517,9 @@ func runServer() {
 		fmt.Fprintf(os.Stderr, "  MUNINN_LOCAL_EMBED           Set to \"0\" to disable bundled ONNX embedder\n")
 		fmt.Fprintf(os.Stderr, "  MUNINN_ENRICH_URL            LLM enrichment endpoint URL (optional)\n")
 		fmt.Fprintf(os.Stderr, "  MUNINN_ENRICH_API_KEY        API key for enrichment (or MUNINN_ANTHROPIC_KEY)\n")
+		fmt.Fprintf(os.Stderr, "  MUNINN_MCP_TOKEN             Bearer token for MCP auth (used if --mcp-token is not set)\n")
 		fmt.Fprintf(os.Stderr, "  MUNINN_LISTEN_HOST           Host to bind all servers to (e.g. 0.0.0.0 for LAN access)\n")
+		fmt.Fprintf(os.Stderr, "  PORT                         Public listener port for Railway-style single-port deploys\n")
 		fmt.Fprintf(os.Stderr, "  MUNINN_CORS_ORIGINS          Comma-separated CORS allowed origins\n")
 		fmt.Fprintf(os.Stderr, "  MUNINN_MEM_LIMIT_GB          Memory limit in GB (default: 4)\n")
 		fmt.Fprintf(os.Stderr, "  MUNINN_GC_PERCENT            Go GC target percentage (default: 200)\n")
@@ -514,6 +530,8 @@ func runServer() {
 		fmt.Fprintf(os.Stderr, "  MUNINN_BACKUP_RETAIN          Number of automated backups to keep (default: 5)\n")
 	}
 	flag.Parse()
+
+	*mcpToken = resolveMCPToken(*mcpToken, os.Getenv("MUNINN_MCP_TOKEN"))
 
 	// TLS env fallbacks — flags take priority; env vars are the fallback.
 	if *tlsCert == "" { *tlsCert = os.Getenv("MUNINN_TLS_CERT") }
@@ -1009,7 +1027,7 @@ func runServer() {
 	}()
 
 	// Start UI server
-	uiSrv, err := ui.NewServer(webFS, restWrapper, restServer.Handler(), authStore, sessionSecret, ring, clientTLS, corsOrigins)
+	uiSrv, err := ui.NewServer(webFS, restWrapper, restServer.Handler(), authStore, sessionSecret, ring, clientTLS, corsOrigins, mcpServer.Handler())
 	if err != nil {
 		slog.Error("create ui server", "err", err)
 		os.Exit(1)

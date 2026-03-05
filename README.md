@@ -375,6 +375,8 @@ docker run -d \
 
 [Full self-hosting guide →](docs/self-hosting.md)
 
+Railway single-service deploy guide: [docs/self-hosting.md#option-3-railway-single-service-mvp](docs/self-hosting.md#option-3-railway-single-service-mvp)
+
 ---
 
 ## Documentation

@@ -244,6 +244,20 @@ func TestHealthEndpoint(t *testing.T) {
 	}
 }
 
+func TestHandlerAccessorServesHealth(t *testing.T) {
+	srv := newTestServer()
+	h := srv.Handler()
+	if h == nil {
+		t.Fatal("expected non-nil handler")
+	}
+	req := httptest.NewRequest("GET", "/mcp/health", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("health status = %d, want 200", w.Code)
+	}
+}
+
 func TestListTools(t *testing.T) {
 	srv := newTestServer()
 	req := httptest.NewRequest("GET", "/mcp/tools", nil)

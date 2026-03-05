@@ -79,6 +79,66 @@ docker run -d --name muninndb -p 8474-8477:8474-8477 -p 8750:8750 \
 
 ---
 
+## Option 3: Railway (single-service MVP)
+
+This repository now includes a root-level [`railway.toml`](../railway.toml) for deploy settings as code.
+
+### 1. Create the Railway service
+
+- Deploy this repo as a single Railway service.
+- Ensure the service builds from the repository `Dockerfile`.
+
+### 2. Add persistent storage
+
+- Attach a Railway volume and mount it to `/data`.
+- MuninnDB stores Pebble, WAL, and auth material under this path.
+
+### 3. Set environment variables
+
+Required:
+
+```sh
+MUNINN_MCP_TOKEN=<strong-random-token>
+```
+
+Optional (as needed):
+
+```sh
+MUNINN_OPENAI_KEY=...
+MUNINN_ENRICH_URL=openai://gpt-4o-mini
+MUNINN_ENRICH_API_KEY=...
+MUNINN_CORS_ORIGINS=https://your-app.example
+```
+
+### 4. Health check
+
+`railway.toml` configures:
+
+- `healthcheckPath = "/mcp/health"`
+- `healthcheckTimeout = 300`
+
+### 5. Verify
+
+With your Railway public domain:
+
+```sh
+curl https://<your-domain>/mcp/health
+curl https://<your-domain>/api/health
+```
+
+Open the UI at:
+
+```txt
+https://<your-domain>/
+```
+
+Notes:
+
+- Keep this deployment private/internal unless you have an appropriate commercial license.
+- Railway provides one public ingress port; this build mounts UI + REST + MCP on that single listener.
+
+---
+
 ## Ports
 
 | Port | Protocol | Purpose |
@@ -277,9 +337,11 @@ curl http://localhost:8750/mcp/health
 | `MUNINN_ENRICH_URL` | `""` | LLM enrichment URL (optional) |
 | `MUNINN_ANTHROPIC_KEY` | `""` | Anthropic API key for enrichment |
 | `MUNINN_ENRICH_API_KEY` | `""` | Generic enrichment API key |
+| `MUNINN_MCP_TOKEN` | `""` | MCP bearer token for `Authorization: Bearer ...` |
 | `MUNINN_MEM_LIMIT_GB` | `4` | GOMEMLIMIT in GB |
 | `MUNINN_GC_PERCENT` | `200` | GOGC tuning |
 | `MUNINN_CORS_ORIGINS` | `""` | Comma-separated allowed CORS origins |
+| `PORT` | `""` | Public listener port in Railway-style single-port environments |
 
 ---
 

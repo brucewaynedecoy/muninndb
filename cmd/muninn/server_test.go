@@ -26,12 +26,32 @@ func TestAllAddrDefaults_UseListenHost(t *testing.T) {
 
 func TestMUNINN_UI_ADDR_EnvOverridesListenHost(t *testing.T) {
 	t.Setenv("MUNINN_UI_ADDR", "192.168.1.100:9999")
-	uiAddrDefault := "10.0.0.1:8476"
-	if v := os.Getenv("MUNINN_UI_ADDR"); v != "" {
-		uiAddrDefault = v
-	}
+	uiAddrDefault := resolveUIAddrDefault("10.0.0.1", os.Getenv("MUNINN_UI_ADDR"), "")
 	if uiAddrDefault != "192.168.1.100:9999" {
 		t.Errorf("expected 192.168.1.100:9999, got %s", uiAddrDefault)
+	}
+}
+
+func TestResolveUIAddrDefault_UsesPORTWhenUIAddrUnset(t *testing.T) {
+	got := resolveUIAddrDefault("127.0.0.1", "", "3000")
+	if got != "0.0.0.0:3000" {
+		t.Errorf("expected 0.0.0.0:3000, got %q", got)
+	}
+}
+
+func TestResolveUIAddrDefault_PrefersExplicitUIAddrOverPORT(t *testing.T) {
+	got := resolveUIAddrDefault("127.0.0.1", "1.2.3.4:8476", "3000")
+	if got != "1.2.3.4:8476" {
+		t.Errorf("expected 1.2.3.4:8476, got %q", got)
+	}
+}
+
+func TestResolveMCPToken(t *testing.T) {
+	if got := resolveMCPToken("flag-token", "env-token"); got != "flag-token" {
+		t.Errorf("expected flag token to win, got %q", got)
+	}
+	if got := resolveMCPToken("", "env-token"); got != "env-token" {
+		t.Errorf("expected env token fallback, got %q", got)
 	}
 }
 
